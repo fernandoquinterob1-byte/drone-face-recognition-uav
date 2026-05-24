@@ -1,0 +1,5 @@
+dataset,subject_id,path,filename,detected,num_faces_detected,error
+DroneFace,a,C:\Users\shipa\OneDrive\Escritorio\Otoño 2026\Procesamiento de imágenes\Proyecto_rostros\data\DroneFace\open_data_set\portraits\a_na_na_por_na.jpg,a_na_na_por_na.jpg,False,0,
+DroneFace,d,C:\Users\shipa\OneDrive\Escritorio\Otoño 2026\Procesamiento de imágenes\Proyecto_rostros\data\DroneFace\open_data_set\portraits\d_na_na_por_na.jpg,d_na_na_por_na.jpg,False,0,
+DroneFace,e,C:\Users\shipa\OneDrive\Escritorio\Otoño 2026\Procesamiento de imágenes\Proyecto_rostros\data\DroneFace\open_data_set\portraits\e_na_na_por_na.jpg,e_na_na_por_na.jpg,False,0,
+DroneFace,g,C:\Users\shipa\OneDrive\Escritorio\Otoño 2026\Procesamiento de imágenes\Proyecto_rostros\data\DroneFace\open_data_set\portraits\g_na_na_por_na.jpg,g_na_na_por_na.jpg,False,0,

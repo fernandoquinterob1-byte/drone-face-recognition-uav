@@ -1,0 +1,4 @@
+det_size,dataset,n_gallery_subjects,total_probe,detected_count,detection_rate,correct_count,accuracy_conditional,accuracy_global,mean_similarity_correct,mean_similarity_incorrect,gallery_subjects_before_detection,gallery_subjects_with_embedding,probes_excluded_no_gallery,probes_evaluated,runtime_seconds
+320,DroneFace,7,868,862,0.9930875576036866,788,0.91415313225058,0.9078341013824884,0.3429601200558434,0.13264037346517718,7,7,496,868,255.7364822999989
+640,DroneFace,7,868,486,0.5599078341013825,424,0.8724279835390947,0.48847926267281105,0.2883424072192525,0.12989541479656774,7,7,496,868,212.21494119999988
+1024,DroneFace,3,372,1,0.002688172043010753,0,0.0,0.0,,-0.020966265350580215,7,3,992,372,93.85097839999798

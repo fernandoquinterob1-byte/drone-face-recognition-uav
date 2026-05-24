@@ -48,6 +48,18 @@ def _largest_face(faces):
     return max(faces, key=_bbox_area)
 
 
+def _face_to_embedding_record(face, face_index: int) -> dict:
+    bbox = np.asarray(getattr(face, "bbox", []), dtype=np.float32)
+    embedding = getattr(face, "embedding", None)
+    return {
+        "face_index": face_index,
+        "embedding": _l2_normalize(embedding),
+        "bbox": bbox.tolist() if bbox.size else None,
+        "detection_score": float(getattr(face, "det_score", np.nan)),
+        "bbox_area": _bbox_area(face),
+    }
+
+
 def _maybe_upscale(image: np.ndarray, min_side_trigger: int = 160, target_min_side: int = 320):
     height, width = image.shape[:2]
     min_side = min(height, width)
@@ -65,7 +77,7 @@ class FaceRecognizerArcFace:
         self,
         model_name: str = "buffalo_l",
         providers: list | None = None,
-        det_size: tuple[int, int] = (640, 640),
+        det_size: tuple[int, int] = (320, 320),
         allow_cuda: bool = False,
     ):
         if FaceAnalysis is None:
@@ -168,6 +180,43 @@ class FaceRecognizerArcFace:
         result["embedding"] = _l2_normalize(embedding)
         result["bbox"] = bbox.tolist() if bbox.size else None
         result["detection_score"] = float(getattr(face, "det_score", np.nan))
+        return result
+
+    def extract_all_face_embeddings(self, path, allow_upscale: bool = True) -> dict:
+        result = {
+            "path": str(path),
+            "detected": False,
+            "detections": [],
+            "num_faces_detected": 0,
+            "upscaled_for_detection": False,
+            "image_shape_original": None,
+            "image_shape_used": None,
+            "error": "",
+        }
+
+        try:
+            image = self.load_image(path)
+        except Exception as exc:
+            result["error"] = str(exc)
+            return result
+
+        result["image_shape_original"] = tuple(int(v) for v in image.shape)
+        image_used = image
+        if allow_upscale:
+            image_used, upscaled = _maybe_upscale(image)
+            result["upscaled_for_detection"] = upscaled
+        result["image_shape_used"] = tuple(int(v) for v in image_used.shape)
+
+        try:
+            faces = self.detect_faces(image_used)
+        except Exception as exc:
+            result["error"] = f"InsightFace detection failed: {exc}"
+            return result
+
+        faces = sorted(faces, key=_bbox_area, reverse=True)
+        result["num_faces_detected"] = len(faces)
+        result["detected"] = bool(faces)
+        result["detections"] = [_face_to_embedding_record(face, idx) for idx, face in enumerate(faces)]
         return result
 
     @staticmethod

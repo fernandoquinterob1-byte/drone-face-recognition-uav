@@ -12,6 +12,7 @@ INDEX_DIR = OUTPUTS_DIR / "indexes"
 EMBEDDINGS_DIR = OUTPUTS_DIR / "embeddings"
 RESULTS_DIR = OUTPUTS_DIR / "results"
 TABLES_DIR = OUTPUTS_DIR / "tables"
+CROPS_DIR = OUTPUTS_DIR / "crops"
 
 PROJECT_DIRS = [
     FIGS_DIR / "dataset",
@@ -22,6 +23,8 @@ PROJECT_DIRS = [
     EMBEDDINGS_DIR,
     RESULTS_DIR,
     TABLES_DIR,
+    CROPS_DIR,
+    CROPS_DIR / "full_images",
 ]
 
 

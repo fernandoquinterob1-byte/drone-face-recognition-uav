@@ -1,0 +1,5 @@
+det_size,recognition_mode,dataset,total_images,images_with_detections,image_detection_rate,total_expected_identities_with_gallery,expected_identities_found,expected_identity_recall_global,images_any_expected_found,any_expected_found_rate,images_all_expected_found,all_expected_found_rate,mean_expected_identity_recall,expected_identities_without_gallery
+320,source_detection_embedding,DroneFace,620,56,0.09032258064516129,868,58,0.06682027649769585,46,0.07419354838709677,39,0.06290322580645161,0.06774193548387097,496
+640,source_detection_embedding,DroneFace,620,255,0.4112903225806452,868,289,0.33294930875576034,228,0.36774193548387096,202,0.3258064516129032,0.3478494623655914,496
+1024,source_detection_embedding,DroneFace,620,467,0.7532258064516129,868,554,0.6382488479262672,421,0.6790322580645162,386,0.6225806451612903,0.6494623655913978,496
+1280,source_detection_embedding,DroneFace,620,567,0.9145161290322581,868,684,0.7880184331797235,522,0.8419354838709677,481,0.7758064516129032,0.8075268817204301,496

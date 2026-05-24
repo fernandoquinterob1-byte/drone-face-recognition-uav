@@ -1,0 +1,3 @@
+experiment,probe_source,unit,total_units,detection_rate,primary_metric,primary_metric_name
+A_cropped_faces,photos_all_faces,cropped_face,868,0.9930875576036866,0.9078341013824884,accuracy_global
+B_full_images,photos_all,full_image_expected_identity,620,0.9145161290322581,0.7880184331797235,expected_identity_recall_global

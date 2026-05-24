@@ -1,11 +1,17 @@
-El baseline closed-set sobre DroneFace obtuvo una accuracy_global de 48.85%, con detection_rate de 55.99% y accuracy_conditional de 87.24%.
+El baseline closed-set sobre DroneFace obtuvo una accuracy_global de 90.78%, con detection_rate de 99.31% y accuracy_conditional de 91.42%.
 
-La diferencia entre accuracy_conditional y accuracy_global sugiere que una parte importante del error proviene de la etapa de deteccion facial previa.
+La diferencia entre accuracy_conditional y accuracy_global no muestra por si sola que la deteccion sea el unico factor dominante del error.
 
-La altura con menor accuracy_global fue 1.5 m (42.86%).
+La altura con menor accuracy_global fue 5.0 m (86.64%).
 
-La distancia con menor accuracy_global fue 3.5 m (17.86%).
+La distancia con menor accuracy_global fue 17.0 m (60.71%).
 
-La combinacion altura-distancia con menor accuracy_global fue altura 1.5 m y distancia 2.0 m (0.00%).
+La combinacion altura-distancia con menor accuracy_global fue altura 3.0 m y distancia 17.0 m (42.86%).
 
 Estos resultados corresponden a un baseline closed-set con un modelo preentrenado; no representan todavia un sistema final de vigilancia real.
+
+En el Experimento B sobre imagenes completas, se guardaron imagenes con bounding boxes y crops de los rostros detectados para auditoria visual. La metrica principal usa los embeddings que InsightFace calcula en la deteccion original de la imagen completa, evitando una segunda deteccion artificial dentro del crop. La recuperacion global de identidades esperadas fue 78.80%, con tasa de imagenes con deteccion de 91.45%. En comparacion, el Experimento A sobre rostros recortados obtuvo accuracy_global de 90.78%. La caida entre A y B sugiere que el paso desde imagen completa del dron a rostro detectable y reconocible sigue siendo mas dificil que evaluar rostros ya recortados. Esta metrica de B no es accuracy por rostro anotado, porque photos_all no incluye bounding boxes con identidad.
+
+Con metricas comparables, el Experimento A obtuvo precision_micro=91.42%, recall_micro=90.78% y f1_micro=91.10%. El Experimento B obtuvo precision_micro=63.16%, recall_micro=78.80% y f1_micro=70.12%. En B, precision y F1 penalizan predicciones extra de identidades que no estaban esperadas en la imagen.
+
+En el barrido corregido del Experimento B, el mejor valor por recuperacion de identidades esperadas fue det_size=1280, con 78.80%. El mayor porcentaje de imagenes con alguna deteccion fue det_size=1280, con 91.45%. En este flujo corregido, aumentar det_size mejoro el pipeline de imagen completa.
