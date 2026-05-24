@@ -1,0 +1,11 @@
+El baseline closed-set sobre DroneFace obtuvo una accuracy_global de 48.85%, con detection_rate de 55.99% y accuracy_conditional de 87.24%.
+
+La diferencia entre accuracy_conditional y accuracy_global sugiere que una parte importante del error proviene de la etapa de deteccion facial previa.
+
+La altura con menor accuracy_global fue 1.5 m (42.86%).
+
+La distancia con menor accuracy_global fue 3.5 m (17.86%).
+
+La combinacion altura-distancia con menor accuracy_global fue altura 1.5 m y distancia 2.0 m (0.00%).
+
+Estos resultados corresponden a un baseline closed-set con un modelo preentrenado; no representan todavia un sistema final de vigilancia real.

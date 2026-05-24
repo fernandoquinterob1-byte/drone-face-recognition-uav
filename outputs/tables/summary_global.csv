@@ -1,0 +1,2 @@
+dataset,n_gallery_subjects,total_probe,detected_count,detection_rate,correct_count,accuracy_conditional,accuracy_global,mean_similarity_correct,mean_similarity_incorrect
+DroneFace,7,868,486,0.5599078341013825,424,0.8724279835390947,0.48847926267281105,0.2883424072192525,0.12989541479656772

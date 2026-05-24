@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Local datasets: do not upload original datasets to GitHub.
+data/DroneFace/open_data_set/
+data/SCface/
+
+# Compressed datasets or model/data dumps
+data/**/*.zip
+data/**/*.rar
+data/**/*.7z
+data/**/*.tar
+data/**/*.tar.gz
+*.onnx
+
+# Local logs and temporary files
+*.log
+*.tmp
