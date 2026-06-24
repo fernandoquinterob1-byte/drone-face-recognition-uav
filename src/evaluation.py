@@ -137,6 +137,8 @@ FULL_IMAGE_RESULT_COLUMNS = [
     "expected_subjects_without_gallery",
     "predicted_subjects",
     "predicted_unexpected_subjects",
+    "n_predicted_subjects",
+    "n_unexpected_predicted",
     "num_faces_detected",
     "num_recognized_faces",
     "found_expected_subjects",
@@ -145,6 +147,8 @@ FULL_IMAGE_RESULT_COLUMNS = [
     "expected_identity_recall",
     "any_expected_found",
     "all_expected_found",
+    "exact_expected_set_match",
+    "jaccard_set_similarity",
     "height_m",
     "distance_m",
     "image_type",
@@ -158,37 +162,19 @@ FULL_IMAGE_SUMMARY_COLUMNS = [
     "image_detection_rate",
     "total_expected_identities_with_gallery",
     "expected_identities_found",
+    "total_predicted_identities",
+    "unexpected_predicted_identities",
     "expected_identity_recall_global",
     "images_any_expected_found",
     "any_expected_found_rate",
     "images_all_expected_found",
     "all_expected_found_rate",
+    "images_exact_expected_set_match",
+    "exact_expected_set_match_rate",
+    "mean_jaccard_set_similarity",
     "mean_expected_identity_recall",
     "expected_identities_without_gallery",
 ]
-
-COMMON_EXPERIMENT_METRIC_COLUMNS = [
-    "dataset",
-    "experiment",
-    "unit",
-    "metric_scope",
-    "total_units",
-    "detected_units",
-    "detection_rate",
-    "total_expected_identities",
-    "total_predicted_identities",
-    "true_positive",
-    "false_positive",
-    "false_negative",
-    "precision_micro",
-    "recall_micro",
-    "f1_micro",
-    "exact_match_count",
-    "exact_match_rate",
-    "macro_f1",
-    "notes",
-]
-
 
 def _safe_bool_series(series: pd.Series) -> pd.Series:
     if series.dtype == bool:
@@ -505,21 +491,19 @@ def parse_composite_subject_id(subject_id) -> list[str]:
     return [char for char in value if char in valid_subjects]
 
 
-def _safe_divide(numerator, denominator) -> float:
-    denominator = float(denominator)
-    if denominator == 0:
-        return float("nan")
-    return float(numerator) / denominator
-
-
-def _f1_score(precision, recall) -> float:
-    if pd.isna(precision) or pd.isna(recall) or (precision + recall) == 0:
-        return float("nan")
-    return 2 * precision * recall / (precision + recall)
-
-
 def _subject_list_from_csv(value) -> list[str]:
     return parse_composite_subject_id(value)
+
+
+def _count_csv_subjects(value) -> int:
+    return len(_subject_list_from_csv(value))
+
+
+def _jaccard_similarity(expected: set[str], predicted: set[str]) -> float:
+    union = expected | predicted
+    if not union:
+        return float("nan")
+    return len(expected & predicted) / len(union)
 
 
 def _bbox_columns(bbox) -> dict:
@@ -949,6 +933,8 @@ def aggregate_full_image_crop_recognition(
         n_expected = len(expected_with_gallery)
         n_found = len(found_expected)
         recall = n_found / n_expected if n_expected else np.nan
+        expected_set = set(expected_with_gallery)
+        predicted_set = set(predicted_subjects)
 
         image_rows.append(
             {
@@ -962,6 +948,8 @@ def aggregate_full_image_crop_recognition(
                 "expected_subjects_without_gallery": _join_subjects(expected_without_gallery),
                 "predicted_subjects": _join_subjects(predicted_subjects),
                 "predicted_unexpected_subjects": _join_subjects(predicted_unexpected),
+                "n_predicted_subjects": len(predicted_subjects),
+                "n_unexpected_predicted": len(predicted_unexpected),
                 "num_faces_detected": int(image_crop_rows["crop_path"].fillna("").astype(str).str.len().gt(0).sum()),
                 "num_recognized_faces": int(recog_rows["crop_detected"].fillna(False).astype(bool).sum()) if not recog_rows.empty else 0,
                 "found_expected_subjects": _join_subjects(found_expected),
@@ -970,6 +958,8 @@ def aggregate_full_image_crop_recognition(
                 "expected_identity_recall": recall,
                 "any_expected_found": n_found > 0 if n_expected else False,
                 "all_expected_found": n_found == n_expected if n_expected else False,
+                "exact_expected_set_match": expected_set == predicted_set,
+                "jaccard_set_similarity": _jaccard_similarity(expected_set, predicted_set),
                 "height_m": getattr(row, "height_m", np.nan),
                 "distance_m": getattr(row, "distance_m", np.nan),
                 "image_type": getattr(row, "image_type", None),
@@ -1108,6 +1098,8 @@ def evaluate_full_images(
         n_expected = len(expected_with_gallery)
         n_found = len(found_expected)
         recall = n_found / n_expected if n_expected else np.nan
+        expected_set = set(expected_with_gallery)
+        predicted_set = set(predicted_unique)
 
         image_rows.append(
             {
@@ -1121,6 +1113,8 @@ def evaluate_full_images(
                 "expected_subjects_without_gallery": _join_subjects(expected_without_gallery),
                 "predicted_subjects": _join_subjects(predicted_unique),
                 "predicted_unexpected_subjects": _join_subjects(predicted_unexpected),
+                "n_predicted_subjects": len(predicted_unique),
+                "n_unexpected_predicted": len(predicted_unexpected),
                 "num_faces_detected": extraction["num_faces_detected"],
                 "num_recognized_faces": len(predicted_subjects),
                 "found_expected_subjects": _join_subjects(found_expected),
@@ -1129,6 +1123,8 @@ def evaluate_full_images(
                 "expected_identity_recall": recall,
                 "any_expected_found": n_found > 0 if n_expected else False,
                 "all_expected_found": n_found == n_expected if n_expected else False,
+                "exact_expected_set_match": expected_set == predicted_set,
+                "jaccard_set_similarity": _jaccard_similarity(expected_set, predicted_set),
                 "height_m": getattr(row, "height_m", np.nan),
                 "distance_m": getattr(row, "distance_m", np.nan),
                 "image_type": getattr(row, "image_type", None),
@@ -1168,11 +1164,16 @@ def _full_image_summary_row(results_df: pd.DataFrame, dataset_name: str = "Drone
             "image_detection_rate": np.nan,
             "total_expected_identities_with_gallery": 0,
             "expected_identities_found": 0,
+            "total_predicted_identities": 0,
+            "unexpected_predicted_identities": 0,
             "expected_identity_recall_global": np.nan,
             "images_any_expected_found": 0,
             "any_expected_found_rate": np.nan,
             "images_all_expected_found": 0,
             "all_expected_found_rate": np.nan,
+            "images_exact_expected_set_match": 0,
+            "exact_expected_set_match_rate": np.nan,
+            "mean_jaccard_set_similarity": np.nan,
             "mean_expected_identity_recall": np.nan,
             "expected_identities_without_gallery": 0,
         }
@@ -1180,8 +1181,34 @@ def _full_image_summary_row(results_df: pd.DataFrame, dataset_name: str = "Drone
     images_with_detections = int((pd.to_numeric(results_df["num_faces_detected"], errors="coerce") > 0).sum())
     total_expected = int(pd.to_numeric(results_df["n_expected_with_gallery"], errors="coerce").fillna(0).sum())
     expected_found = int(pd.to_numeric(results_df["n_expected_found"], errors="coerce").fillna(0).sum())
+    if "n_predicted_subjects" in results_df:
+        total_predicted = int(pd.to_numeric(results_df["n_predicted_subjects"], errors="coerce").fillna(0).sum())
+    else:
+        total_predicted = int(results_df["predicted_subjects"].fillna("").apply(_count_csv_subjects).sum())
+    if "n_unexpected_predicted" in results_df:
+        unexpected_predicted = int(pd.to_numeric(results_df["n_unexpected_predicted"], errors="coerce").fillna(0).sum())
+    else:
+        unexpected_predicted = int(results_df["predicted_unexpected_subjects"].fillna("").apply(_count_csv_subjects).sum())
     any_found = _safe_bool_series(results_df["any_expected_found"])
     all_found = _safe_bool_series(results_df["all_expected_found"])
+    if "exact_expected_set_match" in results_df:
+        exact_match = _safe_bool_series(results_df["exact_expected_set_match"])
+    else:
+        exact_match = results_df.apply(
+            lambda row: set(_subject_list_from_csv(row.get("expected_subjects_with_gallery", "")))
+            == set(_subject_list_from_csv(row.get("predicted_subjects", ""))),
+            axis=1,
+        )
+    if "jaccard_set_similarity" in results_df:
+        jaccard_values = pd.to_numeric(results_df["jaccard_set_similarity"], errors="coerce")
+    else:
+        jaccard_values = results_df.apply(
+            lambda row: _jaccard_similarity(
+                set(_subject_list_from_csv(row.get("expected_subjects_with_gallery", ""))),
+                set(_subject_list_from_csv(row.get("predicted_subjects", ""))),
+            ),
+            axis=1,
+        )
     without_gallery_count = results_df["expected_subjects_without_gallery"].fillna("").apply(
         lambda value: 0 if not str(value).strip() else len(str(value).split(","))
     )
@@ -1193,11 +1220,16 @@ def _full_image_summary_row(results_df: pd.DataFrame, dataset_name: str = "Drone
         "image_detection_rate": images_with_detections / total_images,
         "total_expected_identities_with_gallery": total_expected,
         "expected_identities_found": expected_found,
+        "total_predicted_identities": total_predicted,
+        "unexpected_predicted_identities": unexpected_predicted,
         "expected_identity_recall_global": expected_found / total_expected if total_expected else np.nan,
         "images_any_expected_found": int(any_found.sum()),
         "any_expected_found_rate": int(any_found.sum()) / total_images,
         "images_all_expected_found": int(all_found.sum()),
         "all_expected_found_rate": int(all_found.sum()) / total_images,
+        "images_exact_expected_set_match": int(exact_match.sum()),
+        "exact_expected_set_match_rate": int(exact_match.sum()) / total_images,
+        "mean_jaccard_set_similarity": jaccard_values.mean(),
         "mean_expected_identity_recall": results_df["expected_identity_recall"].mean(),
         "expected_identities_without_gallery": int(without_gallery_count.sum()),
     }
@@ -1223,160 +1255,6 @@ def compute_full_image_grouped_metrics(results_df: pd.DataFrame, group_cols: lis
 
     ordered_cols = [*group_cols, *FULL_IMAGE_SUMMARY_COLUMNS]
     return pd.DataFrame(rows)[ordered_cols].sort_values(group_cols, na_position="last").reset_index(drop=True)
-
-
-def _macro_f1_single_label(results_df: pd.DataFrame) -> float:
-    if results_df.empty or "subject_id" not in results_df:
-        return float("nan")
-
-    true_subjects = results_df["subject_id"].dropna().astype(str)
-    pred_subjects = results_df["predicted_subject"].dropna().astype(str)
-    labels = sorted(set(true_subjects).union(set(pred_subjects)))
-    if not labels:
-        return float("nan")
-
-    y_true = results_df["subject_id"].astype(str)
-    y_pred = results_df["predicted_subject"].where(results_df["predicted_subject"].notna(), "").astype(str)
-    f1_values = []
-    for label in labels:
-        tp = int(((y_true == label) & (y_pred == label)).sum())
-        fp = int(((y_true != label) & (y_pred == label)).sum())
-        fn = int(((y_true == label) & (y_pred != label)).sum())
-        precision = _safe_divide(tp, tp + fp)
-        recall = _safe_divide(tp, tp + fn)
-        f1_values.append(_f1_score(precision, recall))
-
-    valid = [value for value in f1_values if pd.notna(value)]
-    return float(np.mean(valid)) if valid else float("nan")
-
-
-def compute_experiment_a_common_metrics(
-    results_df: pd.DataFrame,
-    dataset_name: str = "DroneFace",
-) -> pd.DataFrame:
-    """Compute common retrieval/classification metrics for Experiment A.
-
-    Experiment A has one expected identity per probe image. A wrong detected
-    prediction contributes one false positive for the predicted class and one
-    false negative for the true class. A non-detection contributes one false
-    negative and no false positive.
-    """
-    total_units = len(results_df)
-    if total_units == 0:
-        return pd.DataFrame(columns=COMMON_EXPERIMENT_METRIC_COLUMNS)
-
-    detected = _safe_bool_series(results_df["detected"])
-    correct = _safe_bool_series(results_df["correct"])
-    has_prediction = results_df["predicted_subject"].notna()
-    tp = int(correct.sum())
-    fp = int((has_prediction & ~correct).sum())
-    fn = int(total_units - tp)
-    precision = _safe_divide(tp, tp + fp)
-    recall = _safe_divide(tp, tp + fn)
-
-    row = {
-        "dataset": dataset_name,
-        "experiment": "A_cropped_faces",
-        "unit": "cropped_face",
-        "metric_scope": "single_label_closed_set",
-        "total_units": total_units,
-        "detected_units": int(detected.sum()),
-        "detection_rate": _safe_divide(int(detected.sum()), total_units),
-        "total_expected_identities": total_units,
-        "total_predicted_identities": int(has_prediction.sum()),
-        "true_positive": tp,
-        "false_positive": fp,
-        "false_negative": fn,
-        "precision_micro": precision,
-        "recall_micro": recall,
-        "f1_micro": _f1_score(precision, recall),
-        "exact_match_count": tp,
-        "exact_match_rate": _safe_divide(tp, total_units),
-        "macro_f1": _macro_f1_single_label(results_df),
-        "notes": "A tiene una identidad esperada por probe; recall_micro coincide con accuracy_global.",
-    }
-    return pd.DataFrame([row], columns=COMMON_EXPERIMENT_METRIC_COLUMNS)
-
-
-def compute_experiment_b_common_metrics(
-    results_df: pd.DataFrame,
-    dataset_name: str = "DroneFace",
-) -> pd.DataFrame:
-    """Compute common set-based metrics for Experiment B.
-
-    Experiment B has a set of expected identities per full drone image. Because
-    DroneFace photos_all does not provide identity labels per bounding box, the
-    metrics compare the set of expected gallery identities with the set of
-    predicted identities in the image.
-    """
-    total_units = len(results_df)
-    if total_units == 0:
-        return pd.DataFrame(columns=COMMON_EXPERIMENT_METRIC_COLUMNS)
-
-    tp = fp = fn = exact = total_expected = total_predicted = 0
-    image_f1_values = []
-    detected_units = int((pd.to_numeric(results_df["num_faces_detected"], errors="coerce") > 0).sum())
-
-    for row in results_df.itertuples(index=False):
-        expected = set(_subject_list_from_csv(getattr(row, "expected_subjects_with_gallery", "")))
-        predicted = set(_subject_list_from_csv(getattr(row, "predicted_subjects", "")))
-        intersection = expected & predicted
-        row_tp = len(intersection)
-        row_fp = len(predicted - expected)
-        row_fn = len(expected - predicted)
-        tp += row_tp
-        fp += row_fp
-        fn += row_fn
-        total_expected += len(expected)
-        total_predicted += len(predicted)
-        if expected == predicted:
-            exact += 1
-
-        precision_i = _safe_divide(row_tp, row_tp + row_fp)
-        recall_i = _safe_divide(row_tp, row_tp + row_fn)
-        f1_i = _f1_score(precision_i, recall_i)
-        if pd.notna(f1_i):
-            image_f1_values.append(f1_i)
-
-    precision = _safe_divide(tp, tp + fp)
-    recall = _safe_divide(tp, tp + fn)
-    row = {
-        "dataset": dataset_name,
-        "experiment": "B_full_images",
-        "unit": "full_image_identity_set",
-        "metric_scope": "set_retrieval_without_bbox_identity",
-        "total_units": total_units,
-        "detected_units": detected_units,
-        "detection_rate": _safe_divide(detected_units, total_units),
-        "total_expected_identities": total_expected,
-        "total_predicted_identities": total_predicted,
-        "true_positive": tp,
-        "false_positive": fp,
-        "false_negative": fn,
-        "precision_micro": precision,
-        "recall_micro": recall,
-        "f1_micro": _f1_score(precision, recall),
-        "exact_match_count": exact,
-        "exact_match_rate": _safe_divide(exact, total_units),
-        "macro_f1": float(np.mean(image_f1_values)) if image_f1_values else float("nan"),
-        "notes": "B compara conjuntos de identidades por imagen; no es F1 por bounding box anotado.",
-    }
-    return pd.DataFrame([row], columns=COMMON_EXPERIMENT_METRIC_COLUMNS)
-
-
-def compute_experiment_a_b_common_metrics(
-    experiment_a_results_df: pd.DataFrame,
-    experiment_b_results_df: pd.DataFrame,
-    dataset_name: str = "DroneFace",
-) -> pd.DataFrame:
-    metrics = [
-        compute_experiment_a_common_metrics(experiment_a_results_df, dataset_name),
-        compute_experiment_b_common_metrics(experiment_b_results_df, dataset_name),
-    ]
-    non_empty = [df for df in metrics if not df.empty]
-    if not non_empty:
-        return pd.DataFrame(columns=COMMON_EXPERIMENT_METRIC_COLUMNS)
-    return pd.concat(non_empty, ignore_index=True)[COMMON_EXPERIMENT_METRIC_COLUMNS]
 
 
 def build_experiment_a_b_comparison(summary_a_df: pd.DataFrame, summary_b_df: pd.DataFrame) -> pd.DataFrame:

@@ -93,8 +93,9 @@ jupyter notebook avance_preliminar.ipynb
 - `outputs/tables/droneface_full_images_by_distance.csv`
 - `outputs/tables/droneface_full_images_by_height_distance.csv`
 - `outputs/tables/droneface_experiment_a_vs_b.csv`
-- `outputs/tables/droneface_experiment_a_b_common_metrics.csv`
 - `outputs/tables/droneface_full_images_det_size_summary.csv`
+- `outputs/results/droneface_synthetic_degradation_results.csv`
+- `outputs/tables/droneface_synthetic_degradation_summary.csv`
 - `outputs/tables/preliminary_discussion.txt`
 - `outputs/tables/gallery_failures_droneface_det320.csv`
 - `outputs/tables/gallery_failures_droneface_det640.csv`
@@ -116,9 +117,10 @@ jupyter notebook avance_preliminar.ipynb
 - `figs/metrics/droneface_detection_vs_accuracy.png`
 - `figs/metrics/droneface_accuracy_height_distance.png`
 - `figs/metrics/droneface_experiment_a_vs_b.png`
-- `figs/metrics/droneface_experiment_a_b_common_metrics.png`
 - `figs/metrics/droneface_full_image_recall_by_distance.png`
 - `figs/metrics/droneface_full_image_recall_height_distance.png`
+- `figs/metrics/droneface_synthetic_degradation_rank1.png`
+- `figs/recognition/droneface_synthetic_degradation_examples.png`
 - `figs/metrics/droneface_full_image_det_size_sweep.png`
 - `figs/metrics/droneface_det_size_detection_accuracy.png`
 
@@ -127,6 +129,10 @@ jupyter notebook avance_preliminar.ipynb
 El Experimento A es closed-set sobre rostros recortados: cada probe evaluado pertenece a un sujeto presente en la galeria. Cada embedding probe se compara contra todos los embeddings de galeria mediante similitud coseno y se predice el sujeto con mayor similitud. En esta etapa no se usa umbral de desconocido.
 
 El Experimento B usa `photos_all`, es decir, imagenes completas del dron. Primero se detectan rostros en la imagen completa, se guardan imagenes de revision con bounding boxes y se guardan crops de cada rostro detectado para auditoria visual. La metrica principal usa los embeddings que InsightFace calcula en esa deteccion original; no se vuelve a detectar dentro del crop rectangular guardado. En esas imagenes las etiquetas son compuestas (`ab`, `cd`, `ef`, `gh`, `ijk`), por lo que se reporta recuperacion de identidades esperadas por imagen. Los sujetos sin galeria (`b`, `c`, `f`, `h`) se informan aparte y no se cuentan como error de reconocimiento.
+
+El Experimento B se interpreta como evaluacion con supervision debil a nivel de imagen completa. No se calculan TP, FP, FN, precision ni F1 por rostro, porque `photos_all` no incluye identidad anotada por bounding box. Por eso una identidad predicha que no estaba en el conjunto esperado se reporta como identidad inesperada, no como falso positivo verificado por rostro.
+
+El Experimento C agrega una evaluacion controlada del modulo de reconocimiento bajo degradacion visual. Usa imagenes de `photos_all_faces` con identidad conocida, preferentemente probes que el Experimento A ya reconoce correctamente, y les aplica degradacion sintetica: baja resolucion con reescalado, Gaussian blur, compresion JPEG y traslacion leve. No se aplica rotacion. Como la identidad real de cada probe degradado es conocida, aqui si se reporta `rank1_accuracy_global` de forma directa.
 
 El modelo se usa preentrenado mediante InsightFace/ArcFace (`buffalo_l`). El Experimento A usa `det_size=(320, 320)` porque fue la configuracion con mejor desempeno sobre rostros ya recortados. El Experimento B usa `det_size=(1280, 1280)` porque en imagenes completas del dron entrega la mejor deteccion y recuperacion de identidades esperadas dentro del barrido corregido. Si InsightFace no puede importar o descargar el modelo, el codigo muestra el error exacto y no cambia automaticamente a otro modelo.
 
@@ -145,15 +151,18 @@ Experimento A: accuracy_global = 90.78%, detection_rate = 99.31%
 Experimento B: expected_identity_recall_global = 78.80%, image_detection_rate = 91.45%
 ```
 
-Tambien se genera una comparacion con metricas comunes. En A la unidad es un rostro recortado con una sola identidad esperada. En B la unidad es una imagen completa y se comparan conjuntos de identidades esperadas contra identidades predichas, porque `photos_all` no tiene identidad anotada por bounding box.
+Para el Experimento B tambien se reportan metricas de conjunto por imagen completa:
 
 ```text
-experimento        precision_micro  recall_micro  f1_micro  exact_match_rate
-A_cropped_faces   91.42%           90.78%        91.10%    90.78%
-B_full_images     63.16%           78.80%        70.12%    25.48%
+expected_identity_recall_global   identidades esperadas recuperadas / identidades esperadas con galeria
+any_expected_found_rate           imagenes donde se recupera al menos una identidad esperada
+all_expected_found_rate           imagenes donde se recuperan todas las identidades esperadas
+exact_expected_set_match_rate     imagenes donde conjunto predicho == conjunto esperado con galeria
+mean_jaccard_set_similarity       promedio de |esperadas interseccion predichas| / |esperadas union predichas|
+unexpected_predicted_identities   identidades predichas que no estaban en el conjunto esperado
 ```
 
-El F1 es util porque hay varias identidades/clases y porque B puede producir predicciones extra. En A, `recall_micro` coincide con `accuracy_global`; en B, `recall_micro` mide cuantas identidades esperadas se recuperan, mientras que `precision_micro` penaliza identidades predichas que no estaban esperadas en la imagen.
+Estas metricas no reemplazan una evaluacion por rostro. Solo resumen recuperacion de identidades esperadas en imagenes completas con etiquetas debiles.
 
 Tambien se probo el Experimento B con `det_size` mayores:
 
@@ -168,6 +177,26 @@ det_size  image_detection_rate  expected_identity_recall_global
 El aumento de `det_size` mejora la cantidad de cajas detectadas y, con la metrica corregida, tambien mejora la recuperacion de identidades esperadas. La version anterior que redetectaba dentro de crops rectangulares castigaba artificialmente el resultado, porque muchos crops no volvian a generar una caja facial aunque el rostro ya habia sido detectado en la imagen original.
 
 Los graficos por distancia agregan todas las alturas disponibles. Para analizar distancia y altura simultaneamente, el notebook genera heatmaps altura-distancia para el Experimento A y para el Experimento B.
+
+## Experimento C: degradacion sintetica controlada
+
+El Experimento C mide reconocimiento Rank-1 con identidad conocida. Toma probes de `photos_all_faces`, genera versiones degradadas en memoria y compara sus embeddings contra la galeria limpia. La metrica principal es:
+
+```text
+rank1_accuracy_global = correct_count / total_synthetic_probes
+```
+
+Tambien se reportan `detection_rate` y `rank1_accuracy_conditional`, que considera solo probes degradados donde se detecto un rostro. Este experimento permite separar el problema de reconocimiento bajo ruido visual del problema de deteccion/asociacion en imagen completa del Experimento B.
+
+Resultados actuales del Experimento C, usando hasta 30 probes correctos por sujeto del Experimento A:
+
+```text
+degradacion       detection_rate  rank1_accuracy_global
+clean_reference  100.00%         100.00%
+mild             99.52%          94.29%
+medium           98.10%          85.71%
+strong           96.19%          74.29%
+```
 
 ## Experimento de sensibilidad del detector
 
@@ -193,7 +222,8 @@ Por esto, los archivos principales `droneface_results.csv`, `summary_global.csv`
 - El Experimento A es closed-set, por lo que no evalua sujetos desconocidos.
 - El rendimiento depende de la deteccion facial previa.
 - `photos_all_faces` representa un baseline simplificado con rostros ya recortados.
-- `photos_all` se evalua como imagen completa y se guardan crops detectados, pero no existen anotaciones de bounding box por identidad para saber manualmente que crop corresponde a cada sujeto real.
+- `photos_all` se evalua como imagen completa y se guardan crops detectados, pero no existen anotaciones de bounding box por identidad para saber manualmente que crop corresponde a cada sujeto real. Por eso B no reporta TP, FP, FN ni F1 por rostro.
+- El Experimento C usa degradaciones sinteticas y no reemplaza una anotacion manual real de los crops de B.
 - `trio_cam` y `trio_gp` no se usan aun en la evaluacion principal.
 - No se implementa control de dron.
 - No se evalua tiempo real.
@@ -202,6 +232,7 @@ Por esto, los archivos principales `droneface_results.csv`, `summary_global.csv`
 ## Trabajo futuro
 
 - Mejorar la deteccion y asociacion de identidades en `photos_all`.
+- Etiquetar manualmente los crops/bounding boxes del Experimento B para medir TP, FP, FN, precision, recall y F1 reales por rostro detectado.
 - Evaluar imagenes con multiples personas de `trio_cam` y `trio_gp`.
 - Probar open-set recognition con umbral de desconocido.
 - Comparar ArcFace con otro metodo.

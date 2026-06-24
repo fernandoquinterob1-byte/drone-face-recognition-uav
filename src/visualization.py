@@ -499,39 +499,6 @@ def plot_experiment_a_vs_b(comparison_df, out_path):
     return _save_or_warn(fig, out_path)
 
 
-def plot_experiment_a_b_common_metrics(common_metrics_df, out_path):
-    if common_metrics_df.empty:
-        warnings.warn("Cannot plot common A/B metrics: dataframe is empty.", stacklevel=2)
-        return None
-    required = {"experiment", "precision_micro", "recall_micro", "f1_micro", "exact_match_rate"}
-    if not required.issubset(common_metrics_df.columns):
-        missing = ", ".join(sorted(required - set(common_metrics_df.columns)))
-        warnings.warn(f"Cannot plot common A/B metrics. Missing columns: {missing}", stacklevel=2)
-        return None
-
-    plot_df = common_metrics_df.copy()
-    labels = plot_df["experiment"].astype(str).tolist()
-    metrics = ["precision_micro", "recall_micro", "f1_micro", "exact_match_rate"]
-    x = np.arange(len(plot_df))
-    width = 0.18
-
-    fig, ax = plt.subplots(figsize=(8.5, 4.8))
-    colors = ["#4e79a7", "#59a14f", "#f28e2b", "#e15759"]
-    offsets = np.linspace(-1.5 * width, 1.5 * width, len(metrics))
-    for metric, offset, color in zip(metrics, offsets, colors):
-        ax.bar(x + offset, plot_df[metric].astype(float), width=width, label=metric, color=color)
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels)
-    ax.set_ylim(0, 1)
-    ax.set_ylabel("proporcion")
-    ax.set_title("DroneFace - metricas comparables A vs B")
-    ax.grid(axis="y", alpha=0.25)
-    ax.legend(ncol=2)
-    fig.tight_layout()
-    return _save_or_warn(fig, out_path)
-
-
 def plot_full_image_recall_by_distance(metric_df, out_path):
     if metric_df.empty:
         warnings.warn("Cannot plot full-image recall by distance: dataframe is empty.", stacklevel=2)
@@ -617,7 +584,6 @@ __all__ = [
     "plot_confusion_matrix",
     "plot_full_image_detections",
     "plot_experiment_a_vs_b",
-    "plot_experiment_a_b_common_metrics",
     "plot_full_image_recall_by_distance",
     "plot_full_image_recall_heatmap_height_distance",
 ]
