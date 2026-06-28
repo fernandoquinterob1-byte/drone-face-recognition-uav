@@ -28,6 +28,9 @@ figs/detection/full_images_review*/
 
 # Generated embeddings: reproducible binary outputs.
 outputs/embeddings/*.npz
+outputs_v2/embeddings/*.npz
+outputs_v2/crops/
+outputs_v2/figs/detection/full_images_review*/
 
 # Compressed datasets or model/data dumps
 data/**/*.zip

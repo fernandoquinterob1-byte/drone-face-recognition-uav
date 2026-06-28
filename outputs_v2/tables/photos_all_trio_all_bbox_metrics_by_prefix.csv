@@ -1,0 +1,6 @@
+gallery_name,group,total_slots,tp,fp,fn,precision,recall,f1
+trio_all,"gallery_name=trio_all, composite_subject_id=ab",249,194,19,54,0.9107981220657277,0.782258064516129,0.841648590021692
+trio_all,"gallery_name=trio_all, composite_subject_id=cd",264,195,44,53,0.8158995815899581,0.7862903225806451,0.8008213552361395
+trio_all,"gallery_name=trio_all, composite_subject_id=ef",256,169,25,79,0.8711340206185567,0.6814516129032258,0.7647058823529411
+trio_all,"gallery_name=trio_all, composite_subject_id=gh",251,174,15,74,0.9206349206349206,0.7016129032258065,0.7963386727688788
+trio_all,"gallery_name=trio_all, composite_subject_id=ijk",374,253,35,119,0.8784722222222222,0.6801075268817204,0.7666666666666666

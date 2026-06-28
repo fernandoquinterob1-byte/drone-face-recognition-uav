@@ -1,0 +1,19 @@
+group,total_slots,tp,fp,fn,precision,recall,f1,gallery_name,composite_subject_id
+gallery_name=trio_all,1394,985,138,379,0.8771148708815673,0.7221407624633431,0.792119018898271,trio_all,
+gallery_name=trio_front,1394,992,131,372,0.8833481745325023,0.7272727272727273,0.7977482911137918,trio_front,
+gallery_name=trio_side,1394,970,153,394,0.8637577916295637,0.7111436950146628,0.7800562927221553,trio_side,
+"gallery_name=trio_all, composite_subject_id=ab",249,194,19,54,0.9107981220657277,0.782258064516129,0.841648590021692,trio_all,ab
+"gallery_name=trio_all, composite_subject_id=cd",264,195,44,53,0.8158995815899581,0.7862903225806451,0.8008213552361395,trio_all,cd
+"gallery_name=trio_all, composite_subject_id=ef",256,169,25,79,0.8711340206185567,0.6814516129032258,0.7647058823529411,trio_all,ef
+"gallery_name=trio_all, composite_subject_id=gh",251,174,15,74,0.9206349206349206,0.7016129032258065,0.7963386727688788,trio_all,gh
+"gallery_name=trio_all, composite_subject_id=ijk",374,253,35,119,0.8784722222222222,0.6801075268817204,0.7666666666666666,trio_all,ijk
+"gallery_name=trio_front, composite_subject_id=ab",249,195,18,53,0.9154929577464789,0.7862903225806451,0.8459869848156182,trio_front,ab
+"gallery_name=trio_front, composite_subject_id=cd",264,194,45,54,0.8117154811715481,0.782258064516129,0.7967145790554415,trio_front,cd
+"gallery_name=trio_front, composite_subject_id=ef",256,172,22,76,0.8865979381443299,0.6935483870967742,0.7782805429864253,trio_front,ef
+"gallery_name=trio_front, composite_subject_id=gh",251,179,10,69,0.9470899470899471,0.7217741935483871,0.8192219679633868,trio_front,gh
+"gallery_name=trio_front, composite_subject_id=ijk",374,252,36,120,0.875,0.6774193548387096,0.7636363636363636,trio_front,ijk
+"gallery_name=trio_side, composite_subject_id=ab",249,194,19,54,0.9107981220657277,0.782258064516129,0.841648590021692,trio_side,ab
+"gallery_name=trio_side, composite_subject_id=cd",264,193,46,55,0.8075313807531381,0.7782258064516129,0.7926078028747434,trio_side,cd
+"gallery_name=trio_side, composite_subject_id=ef",256,167,27,81,0.8608247422680413,0.6733870967741935,0.755656108597285,trio_side,ef
+"gallery_name=trio_side, composite_subject_id=gh",251,164,25,84,0.8677248677248677,0.6612903225806451,0.7505720823798626,trio_side,gh
+"gallery_name=trio_side, composite_subject_id=ijk",374,252,36,120,0.875,0.6774193548387096,0.7636363636363636,trio_side,ijk

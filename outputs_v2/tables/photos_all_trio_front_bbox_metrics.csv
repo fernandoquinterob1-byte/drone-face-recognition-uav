@@ -1,0 +1,2 @@
+gallery_name,group,total_slots,tp,fp,fn,precision,recall,f1
+trio_front,gallery_name=trio_front,1394,992,131,372,0.8833481745325023,0.7272727272727273,0.7977482911137918

@@ -1,0 +1,6 @@
+La version V2 usa galerias desde trio_cam + trio_gp y no hace fine-tuning de ArcFace.
+El modo liviano permite regenerar tablas y graficos sin inicializar InsightFace ni repetir embeddings/detecciones.
+No se reportan multiples runs porque el pipeline es deterministico bajo la configuracion actual.
+En photos_all_faces, la mejor galeria por accuracy_global fue trio_front con 96.48%.
+En photos_all por conjunto, la mejor galeria por recall global fue trio_front con 78.45%.
+En bbox-level, la mejor galeria por F1 fue trio_front con F1=79.77%, precision=88.33%, recall=72.73%.

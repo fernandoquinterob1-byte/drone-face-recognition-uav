@@ -1,0 +1,2 @@
+gallery_name,group,total_slots,tp,fp,fn,precision,recall,f1
+trio_side,gallery_name=trio_side,1394,970,153,394,0.8637577916295637,0.7111436950146628,0.7800562927221553
