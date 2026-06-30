@@ -43,9 +43,11 @@ Por defecto, el notebook queda en modo liviano:
 ```python
 RUN_HEAVY_PIPELINE = False
 REGENERATE_FIGURES = True
+RUN_VERIFICATION_SCORING = False
 ```
 
 Con `RUN_HEAVY_PIPELINE = False`, el notebook no inicializa InsightFace y no recalcula embeddings ni detecciones.
+Con `RUN_VERIFICATION_SCORING = False`, el notebook tampoco recalcula scores verification; solo los lee si ya existen.
 
 ### Decision metodologica principal
 
@@ -66,6 +68,21 @@ trio_all   = porF + porL + porR
 ### Repeticiones e incertidumbre
 
 No se reporta media/desviacion estandar de multiples corridas, porque el pipeline actual es deterministico: mismo modelo, mismos datos y mismas galerias producen los mismos resultados. Se reportan metricas puntuales: accuracy, precision, recall, F1, TP, FP y FN.
+
+Para comparacion con el paper base se agrega un protocolo tipo verification/ROC: se calculan scores continuos entre cada probe y cada identidad candidata. La clase `None/unknown` se usa solo despues, al aplicar un umbral de decision; no forma parte del calculo de AUC.
+
+Los heatmaps comparables con la figura del paper usan bins de distancia de 1.5 m:
+
+```text
+2.5, 4, 5.5, 7, 8.5, 10, 11.5, 13, 14.5, 16 m
+```
+
+El umbral de `None/unknown` se elige desde `photos_all_faces` con criterio ROC por pares (`Youden J = TPR - FPR`) y luego se aplica sin reajustar a `photos_all`.
+
+Para `photos_all` se muestran dos ROC:
+
+- **End-to-end**: incluye fallas de deteccion como score 0.
+- **Detected-only**: excluye fallas de deteccion y evalua el reconocimiento solo cuando existe una deteccion.
 
 Todos los resultados nuevos se guardan en `outputs_v2/`. La carpeta `outputs/` queda intacta.
 """
@@ -91,12 +108,20 @@ from src.v2_figures import (
     load_v2_light_results,
     regenerate_v2_figures,
 )
+from src.v2_verification import (
+    run_saved_verification_analysis,
+    verification_score_paths,
+)
+from src.v2_bbox_size_analysis import run_bbox_size_analysis
 
 pd.set_option("display.max_columns", 140)
 pd.set_option("display.width", 180)
 
 RUN_HEAVY_PIPELINE = False
 REGENERATE_FIGURES = True
+RUN_VERIFICATION_SCORING = False
+RECOMPUTE_VERIFICATION_SCORES = False
+VERIFICATION_GALLERY = "trio_front"
 
 FACE_DET_SIZE = (320, 320)
 FULL_IMAGE_DET_SIZE = (1280, 1280)
@@ -106,6 +131,8 @@ print(f"DroneFace root: {DRONEFACE_ROOT}")
 print(f"V2 outputs: {OUTPUTS_V2_DIR}")
 print(f"RUN_HEAVY_PIPELINE={RUN_HEAVY_PIPELINE}")
 print(f"REGENERATE_FIGURES={REGENERATE_FIGURES}")
+print(f"RUN_VERIFICATION_SCORING={RUN_VERIFICATION_SCORING}")
+print(f"VERIFICATION_GALLERY={VERIFICATION_GALLERY}")
 """
     ),
     markdown_cell("## 2. Indice de DroneFace"),
@@ -332,7 +359,26 @@ else:
 display(pd.DataFrame({"figure_path": [str(path) for path in figure_paths]}))
 """
     ),
-    markdown_cell("## 8. Visualizaciones principales"),
+    markdown_cell(
+        r"""
+## 8. Analisis de tamano de rostro detectado
+
+Esta seccion usa solo `photos_all_detections_labeled_all_galleries.csv`; no recalcula detecciones ni embeddings. El objetivo es medir si la confiabilidad del reconocimiento cae cuando la caja del rostro es demasiado pequena.
+"""
+    ),
+    code_cell(
+        r"""
+bbox_size_analysis = run_bbox_size_analysis(VERIFICATION_GALLERY)
+bbox_size_df = bbox_size_analysis.detections
+bbox_size_metrics_df = bbox_size_analysis.metrics
+
+display(bbox_size_metrics_df)
+print("Figuras bbox-size:")
+for fig_path in bbox_size_analysis.figure_paths:
+    print(fig_path)
+"""
+    ),
+    markdown_cell("## 9. Visualizaciones principales"),
     code_cell(
         r"""
 main_figures = [
@@ -343,6 +389,9 @@ main_figures = [
     V2_FIGS_DIR / "metrics" / "photos_all_bbox_f1_by_prefix.png",
     V2_FIGS_DIR / "metrics" / "photos_all_bbox_f1_by_height.png",
     V2_FIGS_DIR / "metrics" / "photos_all_bbox_f1_by_distance.png",
+    V2_FIGS_DIR / "metrics" / "photos_all_bbox_accuracy_by_bbox_height.png",
+    V2_FIGS_DIR / "metrics" / "photos_all_bbox_size_vs_distance.png",
+    V2_FIGS_DIR / "detection" / f"photos_all_bbox_zoom_examples_{VERIFICATION_GALLERY}.png",
 ]
 
 for fig_path in main_figures:
@@ -353,7 +402,121 @@ for fig_path in main_figures:
         print(f"No existe: {fig_path}")
 """
     ),
-    markdown_cell("## 9. Discusion y conclusiones"),
+    markdown_cell(
+        r"""
+## 10. Verification/AUC comparable con el paper
+
+Esta seccion permite comparar contra el enfoque tipo verification del paper. El AUC se calcula desde pares `(probe, identidad candidata)`.
+
+`None/unknown` no se usa para calcular AUC; aparece solo al aplicar un umbral. El umbral se elige desde `photos_all_faces` con el criterio ROC por pares `Youden J = TPR - FPR` y se aplica igual a `photos_all`.
+
+La ROC end-to-end incluye las fallas de deteccion como score 0. La ROC detected-only excluye esas filas y permite mirar reconocimiento condicionado a que el detector encuentre la cara.
+
+```text
+if best_similarity < threshold:
+    predicted_subject = None
+else:
+    predicted_subject = best_subject
+```
+"""
+    ),
+    code_cell(
+        r"""
+score_paths = verification_score_paths(VERIFICATION_GALLERY)
+
+if RUN_VERIFICATION_SCORING:
+    from src.face_model import FaceRecognizerArcFace
+    from src.v2_verification import (
+        build_photos_all_bbox_verification_scores,
+        build_photos_all_faces_verification_scores,
+        load_gallery_embeddings,
+    )
+
+    gallery_embeddings = load_gallery_embeddings(VERIFICATION_GALLERY)
+
+    if RECOMPUTE_VERIFICATION_SCORES or not score_paths.faces_scores.exists():
+        faces_results_df = pd.read_csv(V2_RESULTS_DIR / f"photos_all_faces_{VERIFICATION_GALLERY}.csv")
+        model_faces = FaceRecognizerArcFace(model_name="buffalo_l", det_size=FACE_DET_SIZE, allow_cuda=False)
+        build_photos_all_faces_verification_scores(
+            faces_results_df,
+            model_faces,
+            gallery_embeddings,
+            gallery_name=VERIFICATION_GALLERY,
+            save_path=score_paths.faces_scores,
+        )
+        print(f"Scores photos_all_faces guardados en: {score_paths.faces_scores}")
+    else:
+        print(f"Scores photos_all_faces existentes: {score_paths.faces_scores}")
+
+    if RECOMPUTE_VERIFICATION_SCORES or not score_paths.bbox_scores.exists():
+        labeled_bbox_df = pd.read_csv(V2_RESULTS_DIR / "photos_all_detections_labeled_all_galleries.csv")
+        model_full = FaceRecognizerArcFace(model_name="buffalo_l", det_size=FULL_IMAGE_DET_SIZE, allow_cuda=False)
+        build_photos_all_bbox_verification_scores(
+            labeled_bbox_df,
+            model_full,
+            gallery_embeddings,
+            gallery_name=VERIFICATION_GALLERY,
+            save_path=score_paths.bbox_scores,
+        )
+        print(f"Scores bbox guardados en: {score_paths.bbox_scores}")
+    else:
+        print(f"Scores bbox existentes: {score_paths.bbox_scores}")
+else:
+    print("Scoring verification omitido: RUN_VERIFICATION_SCORING=False.")
+    print(f"CSV esperado photos_all_faces: {score_paths.faces_scores}")
+    print(f"CSV esperado bbox: {score_paths.bbox_scores}")
+"""
+    ),
+    code_cell(
+        r"""
+if score_paths.faces_scores.exists() and score_paths.bbox_scores.exists():
+    verification_analysis = run_saved_verification_analysis(VERIFICATION_GALLERY)
+    verification_auc_summary_df = verification_analysis["auc_summary"]
+    verification_threshold_summary_df = verification_analysis["threshold_summary"]
+    verification_threshold = verification_analysis["threshold"]
+
+    print(f"Threshold verification elegido desde photos_all_faces: {verification_threshold:.6f}")
+    print("AUC global:")
+    display(verification_auc_summary_df)
+    print("Metricas con None/unknown por umbral:")
+    display(verification_threshold_summary_df)
+else:
+    verification_analysis = None
+    verification_auc_summary_df = pd.DataFrame()
+    verification_threshold_summary_df = pd.DataFrame()
+    print("No hay CSV de scores verification. Activa RUN_VERIFICATION_SCORING=True para generarlos.")
+"""
+    ),
+    code_cell(
+        r"""
+verification_figures = [
+    V2_FIGS_DIR / "metrics" / f"photos_all_faces_verification_{VERIFICATION_GALLERY}_roc.png",
+    V2_FIGS_DIR / "metrics" / f"photos_all_faces_verification_{VERIFICATION_GALLERY}_roc_detected_only.png",
+    V2_FIGS_DIR / "metrics" / f"photos_all_faces_verification_{VERIFICATION_GALLERY}_score_histogram.png",
+    V2_FIGS_DIR / "metrics" / f"photos_all_faces_verification_{VERIFICATION_GALLERY}_score_histogram_detected_only.png",
+    V2_FIGS_DIR / "metrics" / f"photos_all_faces_verification_{VERIFICATION_GALLERY}_f1_vs_threshold.png",
+    V2_FIGS_DIR / "metrics" / f"photos_all_faces_verification_{VERIFICATION_GALLERY}_decision_f1_vs_threshold.png",
+    V2_FIGS_DIR / "metrics" / f"photos_all_faces_verification_{VERIFICATION_GALLERY}_auc_paper_height_distance.png",
+    V2_FIGS_DIR / "metrics" / f"photos_all_faces_verification_{VERIFICATION_GALLERY}_auc_height_distance.png",
+    V2_FIGS_DIR / "metrics" / f"photos_all_bbox_verification_{VERIFICATION_GALLERY}_roc.png",
+    V2_FIGS_DIR / "metrics" / f"photos_all_bbox_verification_{VERIFICATION_GALLERY}_roc_detected_only.png",
+    V2_FIGS_DIR / "metrics" / f"photos_all_bbox_verification_{VERIFICATION_GALLERY}_score_histogram.png",
+    V2_FIGS_DIR / "metrics" / f"photos_all_bbox_verification_{VERIFICATION_GALLERY}_score_histogram_detected_only.png",
+    V2_FIGS_DIR / "metrics" / f"photos_all_bbox_verification_{VERIFICATION_GALLERY}_f1_vs_threshold.png",
+    V2_FIGS_DIR / "metrics" / f"photos_all_bbox_verification_{VERIFICATION_GALLERY}_decision_f1_vs_threshold.png",
+    V2_FIGS_DIR / "metrics" / f"photos_all_bbox_verification_{VERIFICATION_GALLERY}_auc_paper_height_distance.png",
+    V2_FIGS_DIR / "metrics" / f"photos_all_bbox_verification_{VERIFICATION_GALLERY}_auc_height_distance.png",
+]
+
+for fig_path in verification_figures:
+    if fig_path.exists():
+        print(fig_path.name)
+        display(NotebookImage(filename=str(fig_path)))
+    else:
+        print(f"No existe: {fig_path}")
+"""
+    ),
+    markdown_cell("## 11. Discusion y conclusiones"),
     code_cell(
         r"""
 discussion_lines = []
@@ -381,6 +544,46 @@ if not bbox_top_df.empty:
         f"En bbox-level, la mejor galeria por F1 fue {best_bbox['gallery_name']} "
         f"con F1={best_bbox['f1']:.2%}, precision={best_bbox['precision']:.2%}, recall={best_bbox['recall']:.2%}."
     )
+
+if "verification_analysis" in globals() and verification_analysis is not None and not verification_auc_summary_df.empty:
+    faces_auc = verification_auc_summary_df[
+        (verification_auc_summary_df["protocol"].astype(str) == "photos_all_faces")
+        & (verification_auc_summary_df["group"].astype(str) == "global")
+    ]["auc"].iloc[0]
+    faces_auc_detected = verification_auc_summary_df[
+        (verification_auc_summary_df["protocol"].astype(str) == "photos_all_faces")
+        & (verification_auc_summary_df["group"].astype(str) == "detected_only")
+    ]["auc"].iloc[0]
+    bbox_auc = verification_auc_summary_df[
+        (verification_auc_summary_df["protocol"].astype(str) == "photos_all_bbox")
+        & (verification_auc_summary_df["group"].astype(str) == "global")
+    ]["auc"].iloc[0]
+    bbox_auc_detected = verification_auc_summary_df[
+        (verification_auc_summary_df["protocol"].astype(str) == "photos_all_bbox")
+        & (verification_auc_summary_df["group"].astype(str) == "detected_only")
+    ]["auc"].iloc[0]
+    discussion_lines.append(
+        f"En verification/AUC con {VERIFICATION_GALLERY}, photos_all_faces obtuvo AUC={faces_auc:.3f} "
+        f"y photos_all bbox-level obtuvo AUC={bbox_auc:.3f}."
+    )
+    discussion_lines.append(
+        f"Condicionado a detecciones, photos_all_faces obtuvo AUC={faces_auc_detected:.3f} "
+        f"y photos_all bbox-level obtuvo AUC={bbox_auc_detected:.3f}."
+    )
+    discussion_lines.append(
+        "La clase None/unknown se aplica solo al umbral de decision; AUC usa los scores continuos antes del umbral."
+    )
+
+if "bbox_size_metrics_df" in globals() and not bbox_size_metrics_df.empty:
+    first_bin = bbox_size_metrics_df[bbox_size_metrics_df["bbox_height_bin"].astype(str) == "<30 px"]
+    above_30 = bbox_size_metrics_df[bbox_size_metrics_df["bbox_height_bin"].astype(str) != "<30 px"]
+    if not first_bin.empty and not above_30.empty:
+        min_above_30 = above_30["accuracy_conditional"].dropna().min()
+        discussion_lines.append(
+            f"En el analisis condicionado a deteccion, las cajas bajo 30 px tuvieron "
+            f"accuracy={first_bin['accuracy_conditional'].iloc[0]:.2%}; desde 30 px, "
+            f"el peor bin quedo en {min_above_30:.2%}."
+        )
 
 for line in discussion_lines:
     print(f"- {line}")
@@ -418,4 +621,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

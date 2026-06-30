@@ -1,0 +1,5 @@
+protocol,gallery_name,group,n_pairs,n_match,n_mismatch,auc,height_m
+photos_all_faces,trio_front,height_m=1.5,3751,341,3410,0.9782079617478349,1.5
+photos_all_faces,trio_front,height_m=3.0,3751,341,3410,0.9873891693397889,3.0
+photos_all_faces,trio_front,height_m=4.0,3751,341,3410,0.9864715645720281,4.0
+photos_all_faces,trio_front,height_m=5.0,3751,341,3410,0.9602789793689425,5.0

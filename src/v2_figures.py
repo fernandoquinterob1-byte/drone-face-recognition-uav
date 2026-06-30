@@ -99,7 +99,7 @@ def _sort_for_plot(df: pd.DataFrame, column: str) -> pd.DataFrame:
 def _save_fig(fig, out_path: Path) -> Path:
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_path, dpi=180, bbox_inches="tight")
+    fig.savefig(out_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
     return out_path
 
@@ -224,22 +224,40 @@ def plot_pose_comparison(comparison_df: pd.DataFrame, out_path: Path) -> Path | 
         return None
     plot_df = _as_numeric(
         comparison_df,
-        ["detection_rate", "accuracy_global", "accuracy_conditional"],
+        ["accuracy_global", "accuracy_conditional"],
     ).sort_values("gallery_name")
     labels = plot_df["gallery_name"].astype(str).tolist()
     x = np.arange(len(plot_df))
-    width = 0.25
-    fig, ax = plt.subplots(figsize=(8, 4.8))
-    ax.bar(x - width, plot_df["detection_rate"], width=width, label="detection_rate")
-    ax.bar(x, plot_df["accuracy_global"], width=width, label="accuracy_global")
-    ax.bar(x + width, plot_df["accuracy_conditional"], width=width, label="accuracy_conditional")
+    width = 0.32
+    fig, ax = plt.subplots(figsize=(8.2, 5.0))
+    bars_global = ax.bar(
+        x - width / 2,
+        plot_df["accuracy_global"],
+        width=width,
+        label="accuracy_global",
+        color="#4c78a8",
+    )
+    bars_conditional = ax.bar(
+        x + width / 2,
+        plot_df["accuracy_conditional"],
+        width=width,
+        label="accuracy_conditional",
+        color="#f58518",
+    )
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
-    ax.set_ylim(0, 1)
+    ax.set_ylim(0, 1.05)
     ax.set_ylabel("proporcion")
-    ax.set_title("V2 - photos_all_faces por galeria")
+    ax.set_title("V2 - photos_all_faces: reconocimiento por galeria")
     ax.grid(axis="y", alpha=0.25)
     ax.legend()
+    ax.bar_label(bars_global, labels=[f"{v:.1%}" for v in plot_df["accuracy_global"]], padding=3, fontsize=8)
+    ax.bar_label(
+        bars_conditional,
+        labels=[f"{v:.1%}" for v in plot_df["accuracy_conditional"]],
+        padding=3,
+        fontsize=8,
+    )
     fig.tight_layout()
     return _save_fig(fig, out_path)
 
@@ -398,6 +416,47 @@ def plot_bbox_f1_grouped(metrics_df: pd.DataFrame, group_col: str, title: str, o
     return _save_fig(fig, out_path)
 
 
+def plot_bbox_f1_lines_grouped(metrics_df: pd.DataFrame, group_col: str, title: str, out_path: Path):
+    if metrics_df.empty or group_col not in metrics_df.columns:
+        return None
+    df = _as_numeric(metrics_df, ["f1"]).dropna(subset=[group_col, "f1"]).copy()
+    if df.empty:
+        return None
+
+    pivot = df.pivot_table(index=group_col, columns="gallery_name", values="f1", aggfunc="mean")
+    numeric_index = pd.to_numeric(pd.Series(pivot.index, index=pivot.index), errors="coerce")
+    if numeric_index.notna().any():
+        pivot["_sort_key"] = numeric_index
+        pivot = pivot.sort_values("_sort_key").drop(columns=["_sort_key"])
+        x = pd.to_numeric(pd.Series(pivot.index), errors="coerce").to_numpy()
+        x_labels = [f"{value:g}" if pd.notna(value) else str(label) for value, label in zip(x, pivot.index)]
+    else:
+        pivot = pivot.sort_index()
+        x = np.arange(len(pivot.index))
+        x_labels = [str(label) for label in pivot.index]
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    for gallery in pivot.columns:
+        ax.plot(x, pivot[gallery].to_numpy(), marker="o", linewidth=2.4, markersize=5.5, label=str(gallery))
+
+    ax.set_ylim(0, 1)
+    ax.set_xlabel(group_col, fontsize=12)
+    ax.set_ylabel("F1", fontsize=12)
+    ax.set_title(title, fontsize=15)
+    if len(x) > 18:
+        tick_idx = np.arange(0, len(x), 2)
+        ax.set_xticks(x[tick_idx])
+        ax.set_xticklabels([x_labels[i] for i in tick_idx], rotation=45, ha="right")
+    else:
+        ax.set_xticks(x)
+        ax.set_xticklabels(x_labels, rotation=45, ha="right")
+    ax.tick_params(axis="both", labelsize=10)
+    ax.grid(axis="both", alpha=0.25)
+    ax.legend(title="galeria", ncol=min(3, len(pivot.columns)), fontsize=10, title_fontsize=11)
+    fig.tight_layout()
+    return _save_fig(fig, out_path)
+
+
 def regenerate_v2_figures(
     results: V2LightResults | None = None,
     results_dir: Path = V2_RESULTS_DIR,
@@ -533,7 +592,7 @@ def regenerate_v2_figures(
             "V2 - bbox-level F1 por altura",
             metrics_dir / "photos_all_bbox_f1_by_height.png",
         ),
-        plot_bbox_f1_grouped(
+        plot_bbox_f1_lines_grouped(
             bbox_by_distance,
             "distance_m",
             "V2 - bbox-level F1 por distancia",

@@ -4,3 +4,7 @@ No se reportan multiples runs porque el pipeline es deterministico bajo la confi
 En photos_all_faces, la mejor galeria por accuracy_global fue trio_front con 96.48%.
 En photos_all por conjunto, la mejor galeria por recall global fue trio_front con 78.45%.
 En bbox-level, la mejor galeria por F1 fue trio_front con F1=79.77%, precision=88.33%, recall=72.73%.
+En verification/AUC con trio_front, photos_all_faces obtuvo AUC=0.978 y photos_all bbox-level obtuvo AUC=0.822.
+Condicionado a detecciones, photos_all_faces obtuvo AUC=0.986 y photos_all bbox-level obtuvo AUC=0.953.
+La clase None/unknown se aplica solo al umbral de decision; AUC usa los scores continuos antes del umbral.
+En el analisis condicionado a deteccion, las cajas bajo 30 px tuvieron accuracy=77.62%; desde 30 px, el peor bin quedo en 95.62%.

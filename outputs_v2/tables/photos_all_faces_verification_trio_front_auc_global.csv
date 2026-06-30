@@ -1,0 +1,2 @@
+protocol,gallery_name,group,n_pairs,n_match,n_mismatch,auc
+photos_all_faces,trio_front,global,15004,1364,13640,0.977965230777169

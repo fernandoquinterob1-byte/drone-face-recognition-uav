@@ -1,0 +1,2 @@
+protocol,gallery_name,threshold,threshold_source,n_decisions,tp,fp,fn,precision,recall,f1,unknown_rate,false_accept_rate,false_reject_rate
+photos_all_bbox,trio_front,0.17877190589812467,provided,1394,953,89,411,0.9145873320537428,0.6986803519061584,0.7921862011637574,0.25251076040172166,0.03564781675017895,0.2998533724340176

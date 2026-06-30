@@ -43,3 +43,18 @@ data/**/*.tar.gz
 # Local logs and temporary files
 *.log
 *.tmp
+
+# LaTeX build artifacts
+Informe/auxiliares_latex/
+Informe/.latex-aux/
+Informe/*.aux
+Informe/*.bbl
+Informe/*.blg
+Informe/*.log
+Informe/*.out
+Informe/*.toc
+Informe/*.lof
+Informe/*.lot
+Informe/*.fls
+Informe/*.fdb_latexmk
+Informe/*.synctex.gz

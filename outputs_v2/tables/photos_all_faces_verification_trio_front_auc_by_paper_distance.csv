@@ -1,0 +1,11 @@
+protocol,gallery_name,group,n_pairs,n_match,n_mismatch,auc,paper_distance_m
+photos_all_faces,trio_front,paper_distance_m=2.5,1452,132,1320,0.9727444903581267,2.5
+photos_all_faces,trio_front,paper_distance_m=4.0,1452,132,1320,0.9937786960514233,4.0
+photos_all_faces,trio_front,paper_distance_m=5.5,1452,132,1320,1.0,5.5
+photos_all_faces,trio_front,paper_distance_m=7.0,1452,132,1320,0.9999713039485767,7.0
+photos_all_faces,trio_front,paper_distance_m=8.5,1452,132,1320,0.9982151056014692,8.5
+photos_all_faces,trio_front,paper_distance_m=10.0,1452,132,1320,0.9924185032139579,10.0
+photos_all_faces,trio_front,paper_distance_m=11.5,1452,132,1320,0.9914772727272727,11.5
+photos_all_faces,trio_front,paper_distance_m=13.0,1452,132,1320,0.9875918273645546,13.0
+photos_all_faces,trio_front,paper_distance_m=14.5,1452,132,1320,0.9753213957759412,14.5
+photos_all_faces,trio_front,paper_distance_m=16.0,1936,176,1760,0.9385233729338843,16.0

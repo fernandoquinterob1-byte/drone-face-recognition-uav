@@ -1,0 +1,5 @@
+protocol,gallery_name,group,n_pairs,n_match,n_mismatch,auc
+photos_all_faces,trio_front,global,15004,1364,13640,0.977965230777169
+photos_all_faces,trio_front,detected_only,14850,1350,13500,0.9856124005486969
+photos_all_bbox,trio_front,global,15334,1364,13970,0.8218834032709388
+photos_all_bbox,trio_front,detected_only,12353,1093,11260,0.9528541063021749

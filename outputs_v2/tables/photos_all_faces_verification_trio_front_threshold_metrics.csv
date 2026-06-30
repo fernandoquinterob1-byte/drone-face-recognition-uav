@@ -1,0 +1,2 @@
+protocol,gallery_name,threshold,threshold_source,n_decisions,tp,fp,fn,precision,recall,f1,unknown_rate,false_accept_rate,false_reject_rate
+photos_all_faces,trio_front,0.17877190589812467,youden_j,1364,1221,8,143,0.9934906427990235,0.8951612903225806,0.9417662938681063,0.09897360703812316,0.03247800586510264,0.10263929618768329

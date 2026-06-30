@@ -1,0 +1,2 @@
+protocol,gallery_name,group,n_pairs,n_match,n_mismatch,auc
+photos_all_bbox,trio_front,detected_only,12353,1093,11260,0.9528541063021749
